@@ -1,14 +1,37 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.SymbolStore;
 using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Windows.Controls;
 
 namespace IPA;
 
 public static class IpaService
 {
+    private class Point
+    {
+        public int X { get; set; }
+
+        public int Y { get; set; }
+
+        public Point(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
+
+
     public static void ImageToBinary(Bitmap image)
     {
         ToGrayScale(image);
         AdaptiveThreshold(image);
+    }
+
+    public static void GetLinkedAreas(Bitmap biImage)
+    {
+        HighlightRelatedAreas(biImage);
     }
 
     private static void ToGrayScale(Bitmap image)
@@ -18,11 +41,6 @@ public static class IpaService
             for (int x = 0; x < image.Width; x++)
             {
                 var pixel = image.GetPixel(x, y);
-                // The green circles on the arrows disappear. By randomness, I found that at values (wrong multipliers)
-                //
-                //             var gray = (byte)(0.7125 * pixel.R + 1.2154 * pixel.G + 0.721 * pixel.B);
-                //
-                // they appear, but the image will slightly affect
                 var gray = (byte)(0.2125 * pixel.R + 0.7154 * pixel.G + 0.0721 * pixel.B);
                 image.SetPixel(x, y, Color.FromArgb(gray, gray, gray));
             }
@@ -71,8 +89,8 @@ public static class IpaService
         //of the image width for the value of s and 15 for the value of t"
         // why? her znaet!
         var s = grayImg.Width / 8;
-
         var t = 15;
+
         var intgImage = GetIntegralImage(grayImg);
         for (int i = 0; i < grayImg.Width; i++)
         {
@@ -107,6 +125,34 @@ public static class IpaService
                     grayImg.SetPixel(i, j, Color.Black);
                 else
                     grayImg.SetPixel(i, j, Color.White);
+            }
+        }
+    }
+
+    private static void HighlightRelatedAreas(Bitmap biImage)
+    {
+        var labelMatrix = new int[biImage.Width, biImage.Height];
+        int label = 1;
+        for (int i = 0; i < biImage.Width; i++)
+        {
+            for (int j = 0; j < biImage.Height; j++)
+            {
+                if (biImage.GetPixel(i, j).IsForeground() && labelMatrix[i, j] == 0)
+                {
+                    labelMatrix[i, j] = label;
+                    var points = new List<Point> { new(i, j) };
+
+                    while (points.Count > 0)
+                    {
+                        int nx = points[0].X, ny = points[0].Y;
+                        points.RemoveAt(0);
+
+                        for (int dy = -1; dy < 1; dy++)
+                        {
+                                
+                        }
+                    }
+                }
             }
         }
     }

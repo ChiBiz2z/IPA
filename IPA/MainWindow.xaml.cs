@@ -39,6 +39,12 @@ namespace IPA
             IpaService.ImageToBinary(_loadedImage);
             Image2.Source = GetBitMapSource(_loadedImage);
         }
+        
+        private void GetLinkedAreas(object sender, RoutedEventArgs e)
+        {
+            IpaService.GetLinkedAreas(_loadedImage);
+            Image2.Source = GetBitMapSource(_loadedImage);
+        }
 
         private static BitmapSource? GetBitMapSource(Bitmap? bitmap)
         {
