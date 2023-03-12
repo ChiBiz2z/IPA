@@ -34,12 +34,6 @@ namespace IPA
             Image1.Source = GetBitMapSource(bitmap);
         }
 
-        private void ImageToBinary(object sender, RoutedEventArgs e)
-        {
-            IpaService.ImageToBinary(_loadedImage);
-            Image2.Source = GetBitMapSource(_loadedImage);
-        }
-
         private static BitmapSource? GetBitMapSource(Bitmap? bitmap)
         {
             if (bitmap != null)
@@ -50,6 +44,12 @@ namespace IPA
                     BitmapSizeOptions.FromEmptyOptions());
 
             return null;
+        }
+
+        private void Find_Path(object sender, RoutedEventArgs e)
+        {
+            IpaService.FindPath(_loadedImage);
+            Image2.Source = GetBitMapSource(_loadedImage);
         }
     }
 }
