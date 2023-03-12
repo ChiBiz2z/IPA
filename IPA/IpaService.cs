@@ -51,9 +51,7 @@ public static class IpaService
                 else
                 {
                     DrawLine(image, prevCenter, currentCenter);
-                    using var g = Graphics.FromImage(image);
-                    var pen = new Pen(Color.Red);
-                    g.DrawRectangle(pen, GetBoundingBox(labels, currentLabel));
+                    DrawRectangleAroundLabel(labels, currentLabel, image);
                     break;
                 }
             }
@@ -385,18 +383,18 @@ public static class IpaService
         return c / z;
     }
 
-    private static Rectangle GetBoundingBox(int[,] labeledImage, int label)
+    private static void DrawRectangleAroundLabel(int[,] labels, int label, Bitmap image)
     {
-        int minX = labeledImage.GetLength(0);
-        int minY = labeledImage.GetLength(1);
-        int maxX = 0;
-        int maxY = 0;
+        var minX = labels.GetLength(0);
+        var minY = labels.GetLength(1);
+        var maxX = 0;
+        var maxY = 0;
 
-        for (int i = 0; i < labeledImage.GetLength(0); i++)
+        for (int i = 0; i < labels.GetLength(0); i++)
         {
-            for (int j = 0; j < labeledImage.GetLength(1); j++)
+            for (int j = 0; j < labels.GetLength(1); j++)
             {
-                if (labeledImage[i, j] == label)
+                if (labels[i, j] == label)
                 {
                     minX = Math.Min(minX, i);
                     minY = Math.Min(minY, j);
@@ -406,6 +404,8 @@ public static class IpaService
             }
         }
 
-        return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+        using var g = Graphics.FromImage(image);
+        var pen = new Pen(Color.Red);
+        g.DrawRectangle(pen, new Rectangle(minX, minY, maxX - minX, maxY - minY));
     }
 }
