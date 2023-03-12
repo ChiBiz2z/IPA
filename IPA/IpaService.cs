@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 
 namespace IPA;
 
@@ -26,29 +24,26 @@ public static class IpaService
         var start = FindStart(image);
         ImageToBinary(biImage);
 
-        var labels = HighlightRelatedAreas(biImage, out var t);
+        var labels = HighlightRelatedAreas(biImage);
 
-        var massCenters = GetMassCenter(labels);
         var currentLabel = labels[start.X, start.Y];
-        var currentCenter = massCenters[currentLabel];
+        var currentCenter = GetMassCenter(labels, currentLabel);
 
         const int stepSize = 10;
         while (true)
         {
             var tita = GetOrientation(labels, currentLabel);
-            var x = currentCenter.X + (int)(stepSize * Math.Cos(tita));
-            var y = currentCenter.Y + (int)(stepSize * Math.Sin(tita));
+            var eX = currentCenter.X + (int)(stepSize * Math.Cos(tita));
+            var ey = currentCenter.Y + (int)(stepSize * Math.Sin(tita));
 
-            var endPoint = new Point(x, y);
-
-            var label = labels[endPoint.X, endPoint.Y];
+            var label = labels[eX, ey];
 
             if (label != currentLabel && label != 0)
             {
                 var prevLabel = currentLabel;
                 currentLabel = label;
-                currentCenter = massCenters[currentLabel];
-                var prevCenter = GetMassCenter(labels)[prevLabel];
+                currentCenter = GetMassCenter(labels, currentLabel);
+                var prevCenter = GetMassCenter(labels, prevLabel);
                 if (IsArrow(labels, label))
                 {
                     DrawLine(image, prevCenter, currentCenter);
@@ -56,13 +51,16 @@ public static class IpaService
                 else
                 {
                     DrawLine(image, prevCenter, currentCenter);
+                    using var g = Graphics.FromImage(image);
+                    var pen = new Pen(Color.Red);
+                    g.DrawRectangle(pen, GetBoundingBox(labels, currentLabel));
                     break;
                 }
             }
             else
             {
-                currentCenter.X = endPoint.X + 1;
-                currentCenter.Y = endPoint.Y + 1;
+                currentCenter.X = eX + 1;
+                currentCenter.Y = ey + 1;
             }
         }
     }
@@ -181,7 +179,7 @@ public static class IpaService
 
     #region Find Related Areas
 
-    private static int[,] HighlightRelatedAreas(Bitmap biImage, out int totalLabels)
+    private static int[,] HighlightRelatedAreas(Bitmap biImage)
     {
         var labelMatrix = new int[biImage.Width, biImage.Height];
         var label = 0;
@@ -197,7 +195,6 @@ public static class IpaService
             }
         }
 
-        totalLabels = label;
         return labelMatrix;
     }
 
@@ -222,67 +219,47 @@ public static class IpaService
     /// for label area counting
     /// </summary>
     /// <param name="labels"> matrix of related areas</param>
+    /// <param name="label">number of label</param>
     /// <returns></returns>
-    private static Dictionary<int, int> CountLabelAreas(int[,] labels)
+    private static int CountLabelAreas(int[,] labels, int label)
     {
-        var labelAreas = new Dictionary<int, int>();
+        var labelArea = 0;
 
         for (int x = 0; x < labels.GetLength(0); x++)
         {
             for (int y = 0; y < labels.GetLength(1); y++)
             {
-                var label = labels[x, y];
-                if (label != 0)
+                if (labels[x, y] == label)
                 {
-                    if (!labelAreas.ContainsKey(label))
-                    {
-                        labelAreas[label] = 0;
-                    }
-
-                    labelAreas[label]++;
+                    labelArea++;
                 }
             }
         }
 
-        return labelAreas;
+        return labelArea;
     }
 
     /// <summary>
     /// Method for central mass counting
     /// </summary>
     /// <param name="labels">matrix of related areas</param>
-    private static Dictionary<int, Point> GetMassCenter(int[,] labels)
+    private static Point GetMassCenter(int[,] labels, int label)
     {
-        var labelsArea = CountLabelAreas(labels);
-        var labelMassCenters = new Dictionary<int, Point>();
-
+        var labelsArea = CountLabelAreas(labels, label);
+        int mX = 0, mY = 0;
         for (int x = 0; x < labels.GetLength(0); x++)
         {
             for (int y = 0; y < labels.GetLength(1); y++)
             {
-                var label = labels[x, y];
-
-                if (label != 0)
+                if (labels[x, y] == label)
                 {
-                    if (!labelMassCenters.ContainsKey(label))
-                    {
-                        labelMassCenters[label] = new Point(0, 0);
-                    }
-
-                    labelMassCenters[label].X += x;
-                    labelMassCenters[label].Y += y;
+                    mX += x;
+                    mY += y;
                 }
             }
         }
 
-        foreach (var massCenter in labelMassCenters)
-        {
-            int area = labelsArea[massCenter.Key];
-            labelMassCenters[massCenter.Key].X /= area;
-            labelMassCenters[massCenter.Key].Y /= area;
-        }
-
-        return labelMassCenters;
+        return new Point(mX / labelsArea, mY / labelsArea);
     }
 
     /// <summary>
@@ -296,7 +273,7 @@ public static class IpaService
     private static double DiscreteCentralMoment(int[,] labels, int label, int i, int j)
     {
         double mij = 0;
-        var massCentral = GetMassCenter(labels)[label];
+        var massCentral = GetMassCenter(labels, label);
         for (int x = 0; x < labels.GetUpperBound(0); x++)
         {
             for (int y = 0; y < labels.GetUpperBound(1); y++)
@@ -324,7 +301,7 @@ public static class IpaService
         var m02 = DiscreteCentralMoment(labels, label, 0, 2);
 
         var tita = 0.5 * Math.Atan2(2 * m11, m20 - m02);
-        var mc = GetMassCenter(labels)[label];
+        var mc = GetMassCenter(labels, label);
         const int arrowHalf = 28;
 
         //one side of tita line
@@ -381,9 +358,9 @@ public static class IpaService
             }
         }
 
-        var center = GetMassCenter(labels).First();
+        var center = GetMassCenter(labels, 1);
 
-        return center.Value;
+        return center;
     }
 
     /// <summary>
@@ -404,6 +381,31 @@ public static class IpaService
 
         var c = m20 + m02 + Math.Sqrt(Math.Pow(m20 - m02, 2) + 4 * m11 * m11);
         var z = m20 + m02 - Math.Sqrt(Math.Pow(m20 - m02, 2) + 4 * m11 * m11);
+
         return c / z;
+    }
+
+    private static Rectangle GetBoundingBox(int[,] labeledImage, int label)
+    {
+        int minX = labeledImage.GetLength(0);
+        int minY = labeledImage.GetLength(1);
+        int maxX = 0;
+        int maxY = 0;
+
+        for (int i = 0; i < labeledImage.GetLength(0); i++)
+        {
+            for (int j = 0; j < labeledImage.GetLength(1); j++)
+            {
+                if (labeledImage[i, j] == label)
+                {
+                    minX = Math.Min(minX, i);
+                    minY = Math.Min(minY, j);
+                    maxX = Math.Max(maxX, i);
+                    maxY = Math.Max(maxY, j);
+                }
+            }
+        }
+
+        return new Rectangle(minX, minY, maxX - minX, maxY - minY);
     }
 }
